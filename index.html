@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Habit Tracker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#ffffff;--bg2:#f5f5f4;--bg3:#eeede9;
+  --text:#1a1a18;--text2:#6b6b67;--text3:#9e9d99;
+  --border:rgba(0,0,0,0.12);--border2:rgba(0,0,0,0.22);
+  --accent:#1D9E75;--accent-light:#E1F5EE;--accent-dark:#0F6E56;
+  --radius:8px;--radius-lg:12px;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#1c1c1a;--bg2:#252522;--bg3:#2e2e2b;
+    --text:#f0efe9;--text2:#a0a09a;--text3:#6a6a65;
+    --border:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.18);
+    --accent-light:#0a4535;--accent-dark:#9FE1CB;
+  }
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.tracker{max-width:960px;margin:0 auto;padding:28px 24px}
+.nav-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.nav-bar h1{font-size:22px;font-weight:500}
+.nav-btns{display:flex;gap:8px}
+.nav-btn{background:none;border:0.5px solid var(--border2);border-radius:var(--radius);padding:6px 14px;cursor:pointer;font-size:13px;color:var(--text2)}
+.nav-btn:hover{background:var(--bg2)}
+.tab-bar{display:flex;gap:2px;border-bottom:0.5px solid var(--border);margin-bottom:20px}
+.tab{background:none;border:none;padding:8px 18px;cursor:pointer;font-size:14px;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s}
+.tab.active{color:var(--text);border-bottom-color:var(--text);font-weight:500}
+.section{display:none}
+.section.visible{display:block}
+.add-row{display:flex;gap:8px;margin-bottom:16px}
+.add-row input{flex:1;max-width:260px;padding:7px 12px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);font-size:14px;outline:none}
+.add-row input:focus{border-color:var(--accent)}
+.add-row button{padding:7px 16px;border:0.5px solid var(--border2);border-radius:var(--radius);background:none;color:var(--text);font-size:14px;cursor:pointer}
+.add-row button:hover{background:var(--bg2)}
+.grid-wrap{overflow-x:auto;margin-bottom:20px}
+.hg{border-collapse:collapse;font-size:12px;min-width:700px;width:100%}
+.hg th{color:var(--text2);font-weight:400;padding:4px 2px;text-align:center;min-width:22px}
+.hg th.hl{text-align:left;min-width:140px;padding-left:0}
+.hg td{padding:3px 2px;text-align:center}
+.hg td.hn{text-align:left;font-size:13px;color:var(--text);padding:5px 8px 5px 0;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis}
+.hg td.hp{font-size:12px;color:var(--text2);padding-left:8px;white-space:nowrap}
+.hrow{border-bottom:0.5px solid var(--border)}
+.dc{width:20px;height:20px;border-radius:4px;cursor:pointer;display:inline-block;border:none;transition:opacity .15s}
+.dc:hover{opacity:.75}
+.dc.done{background:var(--accent)}
+.dc.skip{background:var(--bg2);border:0.5px solid var(--border)}
+.del-btn{background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;padding:2px 6px;border-radius:4px}
+.del-btn:hover{color:#e24b4a}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px}
+.mc{background:var(--bg2);border-radius:var(--radius);padding:14px 16px}
+.mc-label{font-size:12px;color:var(--text2);margin-bottom:4px}
+.mc-val{font-size:26px;font-weight:500}
+.mc-sub{font-size:12px;color:var(--text3);margin-top:2px}
+.cc{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:14px}
+.ct{font-size:13px;font-weight:500;color:var(--text2);margin-bottom:14px}
+.hi-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--border)}
+.hi-row:last-child{border-bottom:none}
+.hi-name{flex:1;font-size:13px;color:var(--text)}
+.bw{width:120px;height:8px;background:var(--bg2);border-radius:4px;overflow:hidden}
+.bf{height:100%;border-radius:4px;background:var(--accent);transition:width .4s}
+.bp{font-size:12px;color:var(--text2);min-width:34px;text-align:right}
+.sb{font-size:11px;padding:2px 8px;border-radius:12px;background:var(--accent-light);color:var(--accent-dark);white-space:nowrap}
+.heat-cell{width:13px;height:13px;border-radius:2px}
+.legend{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);margin-top:10px}
+.lsq{width:12px;height:12px;border-radius:2px}
+</style>
+</head>
+<body>
+<div class="tracker">
+  <div class="nav-bar">
+    <h1 id="monthTitle"></h1>
+    <div class="nav-btns">
+      <button class="nav-btn" onclick="changeMonth(-1)">← prev</button>
+      <button class="nav-btn" onclick="changeMonth(1)">next →</button>
+    </div>
+  </div>
+  <div class="tab-bar">
+    <button class="tab active" onclick="switchTab('monthly',this)">Monthly</button>
+    <button class="tab" onclick="switchTab('insights',this)">Insights</button>
+    <button class="tab" onclick="switchTab('yearly',this)">Yearly heatmap</button>
+  </div>
+
+  <div id="monthly" class="section visible">
+    <div class="add-row">
+      <input type="text" id="newHabit" placeholder="Add a new habit..." onkeydown="if(event.key==='Enter')addHabit()"/>
+      <button onclick="addHabit()">+ Add</button>
+    </div>
+    <div class="grid-wrap"><table class="hg" id="habitTable"></table></div>
+  </div>
+
+  <div id="insights" class="section">
+    <div class="mgrid" id="metricsRow"></div>
+    <div class="cc">
+      <div class="ct">Completion by habit — this month</div>
+      <div id="habitBars"></div>
+    </div>
+    <div class="cc">
+      <div class="ct">Day-of-week consistency</div>
+      <div style="position:relative;height:200px"><canvas id="dowChart"></canvas></div>
+    </div>
+    <div class="cc">
+      <div class="ct">6-month completion trend</div>
+      <div style="position:relative;height:200px"><canvas id="trendChart"></canvas></div>
+    </div>
+  </div>
+
+  <div id="yearly" class="section">
+    <div class="cc">
+      <div class="ct">Yearly overview — all habits combined</div>
+      <div id="heatmapWrap" style="overflow-x:auto"></div>
+      <div class="legend">
+        <span>Less</span>
+        <span class="lsq" style="background:var(--bg2);border:0.5px solid var(--border)"></span>
+        <span class="lsq" style="background:#9FE1CB"></span>
+        <span class="lsq" style="background:#5DCAA5"></span>
+        <span class="lsq" style="background:#1D9E75"></span>
+        <span class="lsq" style="background:#0F6E56"></span>
+        <span>More</span>
+      </div>
+    </div>
+    <div class="mgrid" id="yearMetrics"></div>
+  </div>
+</div>
+
+<script>
+const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DOW=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const today=new Date();
+let curYear=today.getFullYear(),curMonth=today.getMonth();
+const DEFAULT_HABITS=['Morning meditation','Exercise','Read 30 min','Drink 2L water','No junk food','Sleep by 11pm','Journaling'];
+
+function loadData(){try{return JSON.parse(localStorage.getItem('ht_data')||'{}')}catch(e){return{}}}
+function saveData(d){try{localStorage.setItem('ht_data',JSON.stringify(d))}catch(e){}}
+function loadHabits(){try{const h=JSON.parse(localStorage.getItem('ht_habits'));if(h&&h.length)return h}catch(e){}return DEFAULT_HABITS.slice()}
+
+let data=loadData();
+let habits=loadHabits();
+
+function dim(y,m){return new Date(y,m+1,0).getDate()}
+function key(y,m,h,d){return y+'_'+m+'_'+encodeURIComponent(h)+'_'+d}
+
+function seed(){
+  const m=today.getMonth(),y=today.getFullYear(),cd=today.getDate();
+  habits.forEach(h=>{
+    for(let d=1;d<=cd;d++){const k=key(y,m,h,d);if(!(k in data))data[k]=Math.random()>.28?1:0}
+  });
+  for(let pm=1;pm<=5;pm++){
+    let mm=m-pm,yy=y;
+    if(mm<0){mm+=12;yy--;}
+    const days=dim(yy,mm);
+    habits.forEach(h=>{for(let d=1;d<=days;d++){const k=key(yy,mm,h,d);if(!(k in data))data[k]=Math.random()>.3?1:0}});
+  }
+  saveData(data);
+}
+seed();
+
+function toggle(y,m,h,d){
+  const k=key(y,m,h,d);
+  data[k]=data[k]?0:1;
+  saveData(data);
+  renderAll();
+}
+
+function addHabit(){
+  const inp=document.getElementById('newHabit');
+  const n=inp.value.trim();
+  if(!n||habits.includes(n))return;
+  habits.push(n);
+  localStorage.setItem('ht_habits',JSON.stringify(habits));
+  inp.value='';
+  renderAll();
+}
+
+function removeHabit(enc){
+  habits=habits.filter(x=>x!==decodeURIComponent(enc));
+  localStorage.setItem('ht_habits',JSON.stringify(habits));
+  renderAll();
+}
+
+function getComp(y,m,h){
+  const isCur=y===today.getFullYear()&&m===today.getMonth();
+  const upTo=isCur?today.getDate():dim(y,m);
+  if(upTo<=0)return{done:0,total:0,pct:0};
+  let done=0;
+  for(let d=1;d<=upTo;d++){if(data[key(y,m,h,d)])done++;}
+  return{done,total:upTo,pct:Math.round(done/upTo*100)};
+}
+
+function bestStreak(y,m,h){
+  const isCur=y===today.getFullYear()&&m===today.getMonth();
+  const upTo=isCur?today.getDate():dim(y,m);
+  let max=0,cur=0;
+  for(let d=1;d<=upTo;d++){if(data[key(y,m,h,d)]){cur++;max=Math.max(max,cur);}else cur=0;}
+  return max;
+}
+
+function curStreak(h){
+  let s=0;
+  const d=new Date(today);
+  for(let i=0;i<365;i++){
+    if(data[key(d.getFullYear(),d.getMonth(),h,d.getDate())])s++;
+    else break;
+    d.setDate(d.getDate()-1);
+  }
+  return s;
+}
+
+function renderMonthly(){
+  const y=curYear,m=curMonth,days=dim(y,m);
+  let html='<thead><tr><th class="hl">Habit</th>';
+  for(let d=1;d<=days;d++)html+=`<th>${d}</th>`;
+  html+='<th style="min-width:44px;padding-left:8px">%</th><th></th></tr></thead><tbody>';
+  habits.forEach(h=>{
+    const c=getComp(y,m,h);
+    const enc=encodeURIComponent(h);
+    html+=`<tr class="hrow"><td class="hn" title="${h}">${h}</td>`;
+    for(let d=1;d<=days;d++){
+      const done=data[key(y,m,h,d)]?1:0;
+      html+=`<td><span class="dc ${done?'done':'skip'}" data-y="${y}" data-m="${m}" data-h="${enc}" data-d="${d}"></span></td>`;
+    }
+    html+=`<td class="hp">${c.pct}%</td><td><button class="del-btn" onclick="removeHabit('${enc}')">×</button></td></tr>`;
+  });
+  html+='</tbody>';
+  const tbl=document.getElementById('habitTable');
+  tbl.innerHTML=html;
+  tbl.querySelectorAll('.dc[data-d]').forEach(el=>{
+    el.addEventListener('click',function(){
+      toggle(+this.dataset.y,+this.dataset.m,decodeURIComponent(this.dataset.h),+this.dataset.d);
+    });
+  });
+}
+
+let dowInst=null,trendInst=null;
+function renderInsights(){
+  const y=curYear,m=curMonth;
+  const ac=habits.map(h=>getComp(y,m,h));
+  const tot=ac.reduce((a,c)=>a+c.done,0);
+  const totp=ac.reduce((a,c)=>a+c.total,0);
+  const ovr=totp?Math.round(tot/totp*100):0;
+  const bs=habits.length?Math.max(...habits.map(h=>bestStreak(y,m,h))):0;
+  const bcs=habits.length?Math.max(...habits.map(h=>curStreak(h))):0;
+  const upTo=today.getMonth()===m&&today.getFullYear()===y?today.getDate():dim(y,m);
+  let perf=0;
+  for(let d=1;d<=upTo;d++){if(habits.every(h=>data[key(y,m,h,d)]))perf++;}
+  document.getElementById('metricsRow').innerHTML=`
+    <div class="mc"><div class="mc-label">Overall completion</div><div class="mc-val">${ovr}%</div><div class="mc-sub">${tot} of ${totp} logged</div></div>
+    <div class="mc"><div class="mc-label">Perfect days</div><div class="mc-val">${perf}</div><div class="mc-sub">All habits done</div></div>
+    <div class="mc"><div class="mc-label">Best streak (month)</div><div class="mc-val">${bs}d</div><div class="mc-sub">Consecutive days</div></div>
+    <div class="mc"><div class="mc-label">Current streak</div><div class="mc-val">${bcs}d</div><div class="mc-sub">Best active streak</div></div>`;
+
+  const sorted=[...habits].sort((a,b)=>getComp(y,m,b).pct-getComp(y,m,a).pct);
+  document.getElementById('habitBars').innerHTML=sorted.map(h=>{
+    const c=getComp(y,m,h);
+    const s=bestStreak(y,m,h);
+    return`<div class="hi-row"><span class="hi-name">${h}</span><span class="sb">${s}d streak</span><div class="bw"><div class="bf" style="width:${c.pct}%"></div></div><span class="bp">${c.pct}%</span></div>`;
+  }).join('');
+
+  const dc=Array(7).fill(0),dt=Array(7).fill(0);
+  for(let d=1;d<=upTo;d++){
+    const dow=new Date(y,m,d).getDay();
+    habits.forEach(h=>{if(data[key(y,m,h,d)])dc[dow]++;dt[dow]++;});
+  }
+  const dp=dc.map((c,i)=>dt[i]?Math.round(c/dt[i]*100):0);
+
+  if(dowInst)dowInst.destroy();
+  dowInst=new Chart(document.getElementById('dowChart'),{
+    type:'bar',
+    data:{labels:DOW,datasets:[{label:'%',data:dp,backgroundColor:'#1D9E75',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{max:100,ticks:{callback:v=>v+'%',font:{size:11}},grid:{color:'rgba(128,128,128,0.1)'}},x:{ticks:{font:{size:11}},grid:{display:false}}}}
+  });
+
+  const tl=[],td2=[];
+  for(let i=5;i>=0;i--){
+    let tm=m-i,ty=y;
+    if(tm<0){tm+=12;ty--;}
+    tl.push(MONTHS[tm].slice(0,3));
+    const cp=habits.map(h=>getComp(ty,tm,h));
+    const tp=cp.reduce((a,c)=>a+c.total,0);
+    const td=cp.reduce((a,c)=>a+c.done,0);
+    td2.push(tp?Math.round(td/tp*100):0);
+  }
+  if(trendInst)trendInst.destroy();
+  trendInst=new Chart(document.getElementById('trendChart'),{
+    type:'line',
+    data:{labels:tl,datasets:[{label:'%',data:td2,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,0.08)',fill:true,tension:0.4,pointBackgroundColor:'#1D9E75',pointRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{max:100,ticks:{callback:v=>v+'%',font:{size:11}},grid:{color:'rgba(128,128,128,0.1)'}},x:{ticks:{font:{size:11}},grid:{display:false}}}}
+  });
+}
+
+function renderHeatmap(){
+  const y=curYear;
+  const isLeap=(y%4===0&&y%100!==0)||y%400===0;
+  const totalDays=isLeap?366:365;
+  const startDow=new Date(y,0,1).getDay();
+  const cells=[];
+  for(let i=0;i<startDow;i++)cells.push(null);
+  for(let d=0;d<totalDays;d++){const dt=new Date(y,0,d+1);cells.push({date:dt,d:dt.getDate(),m:dt.getMonth()});}
+  while(cells.length%7!==0)cells.push(null);
+  const colors=['var(--bg2)','#9FE1CB','#5DCAA5','#1D9E75','#0F6E56'];
+  const totalCols=Math.ceil(cells.length/7);
+  const colsArr=[];let lastM=-1;
+  for(let col=0;col<totalCols;col++){
+    const week=cells.slice(col*7,(col+1)*7).filter(Boolean);
+    if(week.length){const fm=week[0].m;if(fm!==lastM){colsArr.push({m:fm,col});lastM=fm;}}
+  }
+  const colW=16;
+  let mLabels='<div style="display:flex;margin-bottom:4px;">';
+  colsArr.forEach((c,i)=>{
+    const w=i<colsArr.length-1?(colsArr[i+1].col-c.col)*colW:colW*2;
+    mLabels+=`<span style="font-size:10px;color:var(--text2);min-width:${w}px;overflow:hidden;white-space:nowrap">${MONTHS[c.m].slice(0,3)}</span>`;
+  });
+  mLabels+='</div>';
+  let g='<div style="display:flex;gap:3px">';
+  for(let col=0;col<totalCols;col++){
+    g+='<div style="display:flex;flex-direction:column;gap:3px">';
+    for(let row=0;row<7;row++){
+      const cell=cells[col*7+row];
+      if(!cell){g+='<div style="width:13px;height:13px"></div>';continue;}
+      const isFut=new Date(y,cell.m,cell.d)>today;
+      let done=0;
+      if(!isFut){habits.forEach(h=>{if(data[key(y,cell.m,h,cell.d)])done++;});}
+      const ratio=habits.length&&!isFut?done/habits.length:0;
+      let ci=0;
+      if(!isFut&&habits.length>0){if(ratio>.8)ci=4;else if(ratio>.6)ci=3;else if(ratio>.3)ci=2;else if(ratio>0)ci=1;}
+      const bg=isFut?'transparent':colors[ci];
+      const brd=isFut?'0.5px solid var(--border)':'none';
+      g+=`<div class="heat-cell" style="background:${bg};border:${brd}" title="${MONTHS[cell.m].slice(0,3)} ${cell.d}: ${done}/${habits.length}"></div>`;
+    }
+    g+='</div>';
+  }
+  g+='</div>';
+  document.getElementById('heatmapWrap').innerHTML=mLabels+g;
+
+  let ytot=0,yposs=0,yperf=0,yact=0;
+  for(let d=0;d<totalDays;d++){
+    const dt=new Date(y,0,d+1);
+    if(dt>today)break;
+    const dm=dt.getDate(),mm=dt.getMonth();
+    let done=0;
+    habits.forEach(h=>{if(data[key(y,mm,h,dm)])done++;});
+    ytot+=done;yposs+=habits.length;
+    if(done===habits.length&&habits.length)yperf++;
+    if(done>0)yact++;
+  }
+  const ypct=yposs?Math.round(ytot/yposs*100):0;
+  document.getElementById('yearMetrics').innerHTML=`
+    <div class="mc"><div class="mc-label">Year completion</div><div class="mc-val">${ypct}%</div><div class="mc-sub">All habits, all days</div></div>
+    <div class="mc"><div class="mc-label">Perfect days</div><div class="mc-val">${yperf}</div><div class="mc-sub">100% habits done</div></div>
+    <div class="mc"><div class="mc-label">Active days</div><div class="mc-val">${yact}</div><div class="mc-sub">At least 1 habit</div></div>
+    <div class="mc"><div class="mc-label">Total check-ins</div><div class="mc-val">${ytot}</div><div class="mc-sub">Habit completions</div></div>`;
+}
+
+function renderAll(){
+  document.getElementById('monthTitle').textContent=MONTHS[curMonth]+' '+curYear;
+  renderMonthly();
+  renderInsights();
+  renderHeatmap();
+}
+function changeMonth(dir){
+  curMonth+=dir;
+  if(curMonth>11){curMonth=0;curYear++;}
+  if(curMonth<0){curMonth=11;curYear--;}
+  renderAll();
+}
+function switchTab(id,btn){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('visible'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('visible');
+  btn.classList.add('active');
+}
+renderAll();
+</script>
+</body>
+</html>
